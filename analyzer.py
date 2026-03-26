@@ -1,27 +1,14 @@
 import os
 import json
-import google.generativeai as genai
+from groq import Groq
 from dotenv import load_dotenv
 
 load_dotenv()
-genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
-
-generation_config = {
-  "temperature": 0.1,
-  "top_p": 0.95,
-  "top_k": 40,
-  "max_output_tokens": 8192,
-  "response_mime_type": "application/json",
-}
-
-model = genai.GenerativeModel(
-  model_name="gemini-2.0-flash",
-  generation_config=generation_config,
-)
+client = Groq(api_key=os.getenv('GROQ_API_KEY'))
 
 def analyze_resume(jd_text, resume_text):
     """
-    Compares resume text with job description using Google Gemini.
+    Compares resume text with job description using Groq API (Llama3).
     Calculates ATS score (0-100), missing keywords, and suggestions.
     """
     prompt = f"""
@@ -53,16 +40,18 @@ def analyze_resume(jd_text, resume_text):
     {resume_text}
     """
 
-    response = model.generate_content(prompt)
+    response = client.chat.completions.create(
+        model="llama3-70b-8192",
+        messages=[{"role": "user", "content": prompt}],
+        response_format={"type": "json_object"}
+    )
     
-    return json.loads(response.text)
+    return json.loads(response.choices[0].message.content)
 
 def generate_improved_resume(jd_text, resume_text):
     """
     Optional: Generates an improved ATS-friendly version of the resume text.
     """
-    text_model = genai.GenerativeModel(model_name="gemini-2.0-flash")
-    
     prompt = f"""
     You are an expert professional resume writer.
     Rewrite this resume to maximize the ATS score against the provided Job Description.
@@ -78,6 +67,9 @@ def generate_improved_resume(jd_text, resume_text):
     {resume_text}
     """
     
-    response = text_model.generate_content(prompt)
+    response = client.chat.completions.create(
+        model="llama3-70b-8192",
+        messages=[{"role": "user", "content": prompt}]
+    )
     
-    return response.text
+    return response.choices[0].message.content
